@@ -1,8 +1,8 @@
 <script lang="ts">
 	import Hexagon from "../lib/hexagon.svelte";
-	import Square from "../lib/square.svelte";
 	import Pentagon from "../lib/pentagon.svelte";
-  import type { Piece, Shape, ShapeColor } from "src/lib/types";
+	import Square from "../lib/square.svelte";
+	import type { Piece, Point, Shape, ShapeColor } from "../lib/types";
 
   export let numShapes: number = 10;
   export const prerender = true;
@@ -14,9 +14,9 @@
   function randomShape(): Shape {
     const shapeIdx = Math.round((Math.random() * 4));
       switch (shapeIdx) {
-        case 0: return 'square';
-        case 1: return 'rectangle';
-        default: return 'pentagon';
+        case 0: return Square;
+        case 1: return Pentagon;
+        default: return Hexagon;
       }
   }
 
@@ -33,15 +33,15 @@
 
   let pieces: Piece[];
   $: {
-    pieces = !loaded ? [] : Array.from(Array(5)).map((_, idx) => {
+    pieces = !loaded ? [] : Array.from(Array(numShapes)).map((_, idx) => {
       return {
         id: idx,
-        shape: randomShape(),
+        Shape: randomShape(),
         color: randomColor(),
       }
     })
   }
-  let positions: {x: number, y: number}[];
+  let positions: Point[];
   $: {
     positions = !loaded ? [] : pieces.map(() => ({
       x: Math.round((Math.random() * (width - sidePaneWidth))),
@@ -55,16 +55,12 @@
 
 </script>
 
-<main bind:clientWidth={width} bind:clientHeight={height}>
-  <section id="workspace">
-    {#each pieces as piece(piece.id)}
-      {#if piece.shape === "square"}
-        <Square color={piece.color} />
-      {:else if piece.shape === 'pentagon'}
-        <Pentagon color={piece.color} />
-      {:else}
-        <Hexagon color={piece.color} />
-      {/if}
+<main>
+  <section id="workspace" bind:clientWidth={width} bind:clientHeight={height}>
+    {#each pieces as {id, color, Shape}, idx (id)}
+      <div class="shape" style="--posx:{positions[idx].x}px;--posy:{positions[idx].y}px">
+        <Shape class="shape" {color} />
+      </div>
     {/each}
   </section>
   <section id="bins">
@@ -76,3 +72,35 @@
     </div>
   </section>
 </main>
+
+<style lang="scss">
+  
+  main {
+    max-width: 800px;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+  }
+
+  #workspace {
+    flex: 1;
+  }
+
+  #bins {
+    width: 200px;
+  }
+
+
+    $translation: translate(var(--posx), var(--posy));
+    
+  .shape {
+    transform: $translation;
+    -ms-transform: translation; /* IE 9 */
+    -webkit-transform: translation; /* Safari and Chrome */
+    -o-transform: translation; /* Opera */
+    -moz-transform: translation; /* Firefox */
+
+    position: absolute;
+    display: inline-block;
+  }
+</style>
