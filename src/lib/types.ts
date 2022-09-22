@@ -4,7 +4,7 @@ export type Shape = ComponentType;
 
 export type ShapeColor = 'red' | 'green' | 'blue';
 
-export type Point = { x: number; y: number };
+export type Point = { x: number; y: number; angle: number };
 
 export type Piece = {
 	id: number;

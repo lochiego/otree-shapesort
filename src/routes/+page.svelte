@@ -1,23 +1,23 @@
 <script lang="ts">
+	import Septagon from "$lib/septagon.svelte";
 	import Hexagon from "../lib/hexagon.svelte";
 	import Pentagon from "../lib/pentagon.svelte";
-	import Square from "../lib/square.svelte";
-	import type { Piece, Point, Shape, ShapeColor } from "../lib/types";
+	import type { Piece, Point as Transform, Shape, ShapeColor } from "../lib/types";
 
   export let numShapes: number = 10;
+  export let shapeSize: number = 60;
   export const prerender = true;
 
-  let width: number;
-  let height: number;
-  const sidePaneWidth = 200;
+  let sandboxWidth: number;
+  let sandboxHeight: number;
 
   function randomShape(): Shape {
-    const shapeIdx = Math.round((Math.random() * 4));
-      switch (shapeIdx) {
-        case 0: return Square;
-        case 1: return Pentagon;
-        default: return Hexagon;
-      }
+    const shapeIdx = Math.round((Math.random() * 2));
+    switch (shapeIdx) {
+      case 0: return Pentagon;
+      case 1: return Hexagon;
+      default: return Septagon;
+    }
   }
 
   function randomColor(): ShapeColor {
@@ -29,7 +29,7 @@
     }
   }
 
-  $: loaded = width !== undefined;
+  $: loaded = sandboxWidth !== undefined;
 
   let pieces: Piece[];
   $: {
@@ -41,11 +41,15 @@
       }
     })
   }
-  let positions: Point[];
+  let transforms: Transform[];
   $: {
-    positions = !loaded ? [] : pieces.map(() => ({
-      x: Math.round((Math.random() * (width - sidePaneWidth))),
-      y: Math.round((Math.random() * height)),
+    const maxX = sandboxWidth - shapeSize;
+    const maxY = sandboxHeight - shapeSize;
+    console.log('max Y', maxY);
+    transforms = !loaded ? [] : pieces.map(() => ({
+      x: Math.round(Math.random() * maxX),
+      y: Math.round(Math.random() * maxY),
+      angle: Math.round((Math.random() * 360)),
     }))
   }
 
@@ -55,45 +59,29 @@
 
 </script>
 
-<main>
-  <section id="workspace" bind:clientWidth={width} bind:clientHeight={height}>
+<main class="w-full h-full flex m-0 p-0">
+  <section class="flex flex-1 h-full" bind:clientWidth={sandboxWidth} bind:clientHeight={sandboxHeight}>
     {#each pieces as {id, color, Shape}, idx (id)}
-      <div class="shape" style="--posx:{positions[idx].x}px;--posy:{positions[idx].y}px">
-        <Shape class="shape" {color} />
+      <div class="fixed top-0 left-0 shape" style="--posx:{transforms[idx].x}px;--posy:{transforms[idx].y}px;--angle:{transforms[idx].angle}deg">
+        <Shape class="shape" {color} size={shapeSize} />
       </div>
     {/each}
   </section>
-  <section id="bins">
+  <section class="w-1/6">
     <div id="bucket1"></div>
     <div id="bucket2"></div>
     <div id="bucket3"></div>
     <div id="submit">
-      <button on:click={handleSubmit}>Submit</button>
+      <!-- <button on:click={handleSubmit}>Submit</button> -->
     </div>
   </section>
 </main>
 
 <style lang="scss">
   
-  main {
-    max-width: 800px;
-    height: 100%;
-    display: flex;
-    align-items: stretch;
-  }
-
-  #workspace {
-    flex: 1;
-  }
-
-  #bins {
-    width: 200px;
-  }
-
-
-    $translation: translate(var(--posx), var(--posy));
-    
   .shape {
+    $translation: translate(var(--posx), var(--posy)) rotate(var(--angle));
+
     transform: $translation;
     -ms-transform: translation; /* IE 9 */
     -webkit-transform: translation; /* Safari and Chrome */
