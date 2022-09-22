@@ -2,7 +2,7 @@ import type { ComponentType } from 'svelte';
 
 export type Shape = ComponentType;
 
-export type ShapeColor = 'red' | 'green' | 'blue';
+export type ShapeColor = string;
 
 export type Point = { x: number; y: number; angle: number };
 
