@@ -113,7 +113,8 @@
 	let selectedIdx = -1;
 
 	function mouseDown(event: MouseEvent, itemIdx: number) {
-		const { top, left } = (event.target as HTMLElement).getBoundingClientRect();
+		const shape = event.target as HTMLElement;
+		const { top, left } = shape.getBoundingClientRect();
 		offsetX = event.clientX - left;
 		offsetY = event.clientY - top;
 		selectedIdx = itemIdx;
@@ -124,7 +125,8 @@
 	}
 
 	function dragStart(event: DragEvent, itemIndex: number) {
-		event.dataTransfer!.setData('item', `${itemIndex}`);
+		const el = event.target as HTMLElement;
+		event.dataTransfer!.setData('item', el.id);
 
 		let crt = (event.target as HTMLElement).cloneNode(true) as HTMLElement;
 		crt.id = 'temp';
@@ -167,10 +169,10 @@
 
 	function drop(event: DragEvent) {
 		console.log('dropped', event);
-		event.preventDefault();
-		const dataItemIdx = event.dataTransfer!.getData('item');
-		const itemIdx = Number.parseInt(dataItemIdx);
-
+		// const dataItemIdx = event.dataTransfer!.getData('item');
+		// const itemId = `shape-${dataItemIdx}`;
+		// const el = document.getElementById(itemId) as HTMLElement;
+		// el.classList.remove('invisible');
 		// TODO: move it over if necessary
 
 		// TODO: remove the dragging class from the item
@@ -196,6 +198,7 @@
 	>
 		{#each pieces as { id, color, Shape }, idx (id)}
 			<div
+				id="shape-{idx}"
 				class="fixed z-10 shape"
 				style="--posx:{pieces[idx].transform.x}px;--posy:{pieces[idx].transform
 					.y}px;--angle:{pieces[idx].transform.angle}deg"
@@ -214,7 +217,13 @@
 		<div
 			id={ID_BUCKET1}
 			class="flex-1 border flex items-center justify-center"
-			on:dragenter={() => (hoverOver = ID_BUCKET1)}
+			on:dragenter={(e) => {
+				hoverOver = ID_BUCKET1;
+				e.preventDefault();
+			}}
+			on:dragover={(e) => {
+				e.preventDefault();
+			}}
 			class:hovering={hoverOver === ID_BUCKET1}
 			on:dragexit={() => (hoverOver = undefined)}
 			on:drop={(event) => drop(event)}
@@ -225,14 +234,34 @@
 				<div class="w-full h-full bg-green-900 opacity-70" />
 			{/if}
 		</div>
-		<div id="bucket2" class="flex-1 h-full border flex items-center justify-center">
+		<div
+			id="bucket2"
+			class="flex-1 h-full border flex items-center justify-center"
+			on:dragenter={(e) => {
+				hoverOver = ID_BUCKET1;
+				e.preventDefault();
+			}}
+			on:dragover={(e) => {
+				e.preventDefault();
+			}}
+		>
 			{#if !sortByColor}
 				<Hexagon color="#a0a0a0" size={80} />
 			{:else}
 				<div class="w-full h-full bg-blue-900 opacity-70" />
 			{/if}
 		</div>
-		<div id="bucket3" class="flex-1 border flex items-center justify-center">
+		<div
+			id="bucket3"
+			class="flex-1 border flex items-center justify-center"
+			on:dragenter={(e) => {
+				hoverOver = ID_BUCKET1;
+				e.preventDefault();
+			}}
+			on:dragover={(e) => {
+				e.preventDefault();
+			}}
+		>
 			{#if !sortByColor}
 				<Septagon color="#a0a0a0" size={80} />
 			{:else}
