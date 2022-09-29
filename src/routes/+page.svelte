@@ -6,6 +6,7 @@
 	import Hexagon from '../lib/hexagon.svelte';
 	import Pentagon from '../lib/pentagon.svelte';
 	import type { Piece, Point as Transform, Shape, ShapeColor } from '../lib/types';
+	import { draggable } from '@neodrag/svelte';
 
 	/* ============
 	 * API
@@ -76,7 +77,7 @@
 
 	$: loaded = sandboxWidth !== undefined;
 
-	let pieces: (Piece & { transform: Transform; targetSlot: number })[];
+	let pieces: (Piece & { initialTransform: Transform; targetSlot: number })[];
 	$: {
 		const maxX = sandboxWidth - shapeSize;
 		const maxY = sandboxHeight - shapeSize;
@@ -95,7 +96,7 @@
 						Shape: shape,
 						color: color,
 						targetSlot: bin,
-						transform: {
+						initialTransform: {
 							x: Math.round(Math.random() * maxX),
 							y: Math.round(Math.random() * maxY),
 							angle: Math.round(Math.random() * 360)
@@ -104,103 +105,77 @@
 			  });
 	}
 
-	function getBinEl(bin: number) {
+	function getBinEl(bin: number): HTMLElement {
+		let bucketId: string;
 		switch (bin) {
 			case 0:
-				return ID_BUCKET1;
+				bucketId = ID_BUCKET1;
 			case 1:
-				return ID_BUCKET2;
+				bucketId = ID_BUCKET2;
 			default:
-				return ID_BUCKET3;
+				bucketId = ID_BUCKET3;
 		}
+
+		return document.getElementById(bucketId)!;
 	}
 
 	/* ------------
 	 * Drag and drop setup
 	 * ------------ */
 
-	let offsetX: number;
-	let offsetY: number;
 	let selectedIdx = -1;
+	let highlightedBin = -1;
+
+	let binHeight: number, binWidth: number;
 
 	function mouseDown(event: MouseEvent, itemIdx: number) {
-		// event.preventDefault();
+		event.preventDefault();
 
 		// Get the baseline offset
-		const shape = event.target as HTMLElement;
-		const { top, left } = shape.getBoundingClientRect();
-		offsetX = event.clientX - left;
-		offsetY = event.clientY - top;
 		selectedIdx = itemIdx;
-
-		let clone = (event.target as HTMLElement).cloneNode(true) as HTMLElement;
-		clone.id = 'temp';
-		clone.style.visibility = 'invisible'; /* or visibility: hidden, or any of the above */
-		clone.classList.add('pointer-events-none');
-		document.body.appendChild(clone);
-		// event.dataTransfer?.setDragImage(clone, 0, 0);
-
-		const el = event.target as HTMLDivElement;
-
-		// Move relative to the last-known position
-		function handleMove(event: MouseEvent) {
-			const tick = new Promise(requestAnimationFrame);
-
-			const { pageX: xMove, pageY: yMove } = event;
-
-			if (xMove === 0) {
-				return;
-			}
-
-			tick.then(() => {
-				console.log('mouse moved!');
-				const transform = pieces[itemIdx].transform;
-				transform.x = xMove - offsetX;
-				transform.y = yMove - offsetY;
-				pieces[itemIdx].transform = transform;
-				pieces = pieces;
-
-				clone.style.left = `${transform.x}px`;
-				clone.style.top = `${transform.y}px`;
-			});
-		}
-
-		document.addEventListener('mousemove', handleMove);
-		// el.classList.add('pointer-events-none');
-
-		function handleDrop(event: DragEvent) {
-			console.log('dropped', event);
-
-			cleanup();
-			// const dataItemIdx = event.dataTransfer!.getData('item');
-			// const itemId = `shape-${dataItemIdx}`;
-			// const el = document.getElementById(itemId) as HTMLElement;
-			// el.classList.remove('invisible');
-			// TODO: move it over if necessary
-
-			// TODO: remove the dragging class from the item
-		}
-
-		const targetBin = document.getElementById(getBinEl(itemIdx)) as HTMLElement;
-		const canceler = (e: Event) => e.preventDefault();
-		targetBin.ondragenter = canceler;
-		targetBin.ondragover = canceler;
 
 		function cleanup() {
 			// handle drop detection
 			console.log('cleanup time');
 			// el.classList.remove('pointer-events-none');
-			console.log('classes', el.classList);
-			document.removeEventListener('mousemove', handleMove);
 			document.getElementById('temp')?.remove();
 			document.onmouseup = null;
-			targetBin.ondragenter = null;
-			targetBin.ondragover = null;
 			selectedIdx = -1;
 
-			clone.remove();
+			document.getElementById('temp')?.remove();
 		}
-		document.onmouseup = cleanup;
+
+		function handleDragStart(event: DragEvent) {
+			let clone = (event.target as HTMLElement).cloneNode(true) as HTMLElement;
+			clone.id = 'temp';
+			clone.style.visibility = 'invisible'; /* or visibility: hidden, or any of the above */
+			// clone.classList.add('pointer-events-none');
+			document.body.appendChild(clone);
+			event.dataTransfer?.setDragImage(clone, 0, 0);
+
+			function handleDrop(event: DragEvent) {
+				console.log('dropped', event);
+
+				cleanup();
+				// const dataItemIdx = event.dataTransfer!.getData('item');
+				// const itemId = `shape-${dataItemIdx}`;
+				// const el = document.getElementById(itemId) as HTMLElement;
+				// el.classList.remove('invisible');
+				// TODO: move it over if necessary
+
+				// TODO: remove the dragging class from the item
+			}
+		}
+
+		// Move relative to the last-known position
+		function handleMove(event: MouseEvent) {
+			// TODO: Determine if mouse is over a bin
+			// TODO: set the bin being hovered over
+			// TODO: clear the bin being hovered over if not hovereing
+		}
+
+		// const targetBin = getBinEl(itemIdx);
+		// console.log('styling bin', targetBin);
 	}
 
 	/* ------------
@@ -221,33 +196,25 @@
 		bind:clientWidth={sandboxWidth}
 		bind:clientHeight={sandboxHeight}
 	>
-		{#each pieces as { id, color, Shape }, idx (id)}
+		{#each pieces as { id, color, Shape, initialTransform }, idx (id)}
 			<div
 				id="shape-{idx}"
 				class="fixed z-10 shape"
-				style="--posx:{pieces[idx].transform.x}px;--posy:{pieces[idx].transform
-					.y}px;--angle:{pieces[idx].transform.angle}deg"
-				draggable="true"
-				on:mousedown={(event) => mouseDown(event, idx)}
+				use:draggable={{
+					defaultPosition: initialTransform
+				}}
 			>
 				<Shape {color} size={shapeSize} />
 			</div>
 		{/each}
 	</section>
-	<section class="w-1/6 h-full flex flex-col">
+	<section class="w-64 h-full flex flex-col">
 		<div
 			id={ID_BUCKET1}
 			class="flex-1 border flex items-center justify-center"
-			on:dragenter={(e) => {
-				console.log('Heh heh');
-				hoverOver = ID_BUCKET1;
-				e.preventDefault();
-			}}
-			on:dragover={(e) => {
-				e.preventDefault();
-			}}
+			bind:clientWidth={binWidth}
+			bind:clientHeight={binHeight}
 			class:hovering={hoverOver === ID_BUCKET1}
-			on:dragexit={() => (hoverOver = undefined)}
 		>
 			{#if !sortByColor}
 				<Pentagon color="#a0a0a0" size={80} />
@@ -260,9 +227,6 @@
 			class="flex-1 h-full border flex items-center justify-center"
 			on:dragenter={(e) => {
 				hoverOver = ID_BUCKET1;
-				e.preventDefault();
-			}}
-			on:dragover={(e) => {
 				e.preventDefault();
 			}}
 		>
@@ -315,20 +279,6 @@
 	}
 
 	.shape {
-		$transform: translate(var(--posx), var(--posy)); // rotate(var(--angle));
-
-		// left: var(--posx);
-		// top: var(--posy);
-
-		transform: $transform;
-		-ms-transform: $transform; /* IE 9 */
-		-webkit-transform: $transform; /* Safari and Chrome */
-		-o-transform: $transform; /* Opera */
-		-moz-transform: $transform; /* Firefox */
-
-		transition: all 0.8 ease;
-
-		// position: fixed;
 		display: inline-block;
 
 		@include grab-cursor;
