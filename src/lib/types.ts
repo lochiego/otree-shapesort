@@ -10,4 +10,5 @@ export type Piece = {
 	id: number;
 	Shape: Shape;
 	color: ShapeColor;
+	inBin: boolean;
 };

@@ -3,10 +3,11 @@
 	 * Imports
 	 * ============ */
 	import Septagon from '$lib/septagon.svelte';
+	import type { DragEventData } from '@neodrag/svelte';
+	import { draggable } from '@neodrag/svelte';
 	import Hexagon from '../lib/hexagon.svelte';
 	import Pentagon from '../lib/pentagon.svelte';
 	import type { Piece, Point as Transform, Shape, ShapeColor } from '../lib/types';
-	import { draggable } from '@neodrag/svelte';
 
 	/* ============
 	 * API
@@ -57,11 +58,11 @@
 	function colorForBin(bin: number): ShapeColor {
 		switch (bin) {
 			case 0:
-				return COLOR_RED;
+				return COLOR_GREEN;
 			case 1:
 				return COLOR_BLUE;
 			default:
-				return COLOR_GREEN;
+				return COLOR_RED;
 		}
 	}
 
@@ -96,6 +97,7 @@
 						Shape: shape,
 						color: color,
 						targetSlot: bin,
+						inBin: false,
 						initialTransform: {
 							x: Math.round(Math.random() * maxX),
 							y: Math.round(Math.random() * maxY),
@@ -105,77 +107,52 @@
 			  });
 	}
 
-	function getBinEl(bin: number): HTMLElement {
-		let bucketId: string;
-		switch (bin) {
-			case 0:
-				bucketId = ID_BUCKET1;
-			case 1:
-				bucketId = ID_BUCKET2;
-			default:
-				bucketId = ID_BUCKET3;
-		}
-
-		return document.getElementById(bucketId)!;
-	}
-
 	/* ------------
 	 * Drag and drop setup
 	 * ------------ */
 
 	let selectedIdx = -1;
-	let highlightedBin = -1;
+	let targetBin = -1;
+	let hoveredBin = -1;
 
-	let binHeight: number, binWidth: number;
+	let thirdBin: HTMLElement;
 
-	function mouseDown(event: MouseEvent, itemIdx: number) {
-		event.preventDefault();
-
+	function handleSelect(event: DragEventData, itemIdx: number) {
 		// Get the baseline offset
 		selectedIdx = itemIdx;
+		targetBin = pieces[selectedIdx].targetSlot;
+	}
 
-		function cleanup() {
-			// handle drop detection
-			console.log('cleanup time');
-			// el.classList.remove('pointer-events-none');
-			document.getElementById('temp')?.remove();
-			document.onmouseup = null;
-			selectedIdx = -1;
+	function cleanup() {
+		console.log('cleanup time');
+		// Remove any hover decorators from bins
+		selectedIdx = -1;
+		targetBin = -1;
+		hoveredBin = -1;
+	}
 
-			document.getElementById('temp')?.remove();
+	function handleDrop(event: DragEventData) {
+		console.log('dropped', event);
+
+		// If we were hovering over the target then set the piece to be sorted
+		if (hoveredBin >= 0) {
+			pieces[selectedIdx].inBin = true;
+			pieces = pieces;
 		}
 
-		function handleDragStart(event: DragEvent) {
-			let clone = (event.target as HTMLElement).cloneNode(true) as HTMLElement;
-			clone.id = 'temp';
-			clone.style.visibility = 'invisible'; /* or visibility: hidden, or any of the above */
-			// clone.classList.add('pointer-events-none');
-			document.body.appendChild(clone);
-			event.dataTransfer?.setDragImage(clone, 0, 0);
+		cleanup();
+	}
 
-			function handleDrop(event: DragEvent) {
-				console.log('dropped', event);
+	function handleMove(event: DragEventData) {
+		const midX = event.domRect.x + event.domRect.width * 0.5;
+		const midY = event.domRect.y + event.domRect.height * 0.5;
 
-				cleanup();
-				// const dataItemIdx = event.dataTransfer!.getData('item');
-				// const itemId = `shape-${dataItemIdx}`;
-				// const el = document.getElementById(itemId) as HTMLElement;
-				// el.classList.remove('invisible');
-				// TODO: move it over if necessary
-
-				// TODO: remove the dragging class from the item
-			}
+		if (midX < thirdBin.offsetLeft || midY > thirdBin.offsetTop + thirdBin.clientHeight) {
+			hoveredBin = -1;
+		} else {
+			let overBin = Math.floor(event.offsetY / thirdBin.clientHeight);
+			hoveredBin = targetBin === overBin ? targetBin : -1;
 		}
-
-		// Move relative to the last-known position
-		function handleMove(event: MouseEvent) {
-			// TODO: Determine if mouse is over a bin
-			// TODO: set the bin being hovered over
-			// TODO: clear the bin being hovered over if not hovereing
-		}
-
-		// const targetBin = getBinEl(itemIdx);
-		// console.log('styling bin', targetBin);
 	}
 
 	/* ------------
@@ -186,8 +163,7 @@
 	}
 
 	$: sortByColor = sortBy === 'color';
-
-	let hoverOver: string | undefined;
+	$: canSubmit = pieces.length && pieces.every((p) => p.inBin);
 </script>
 
 <main class="w-full h-full flex m-0 p-0 overflow-hidden">
@@ -196,12 +172,18 @@
 		bind:clientWidth={sandboxWidth}
 		bind:clientHeight={sandboxHeight}
 	>
-		{#each pieces as { id, color, Shape, initialTransform }, idx (id)}
+		{#each pieces as { id, color, Shape, initialTransform, inBin }, idx (id)}
 			<div
 				id="shape-{idx}"
 				class="fixed z-10 shape"
+				class:grabbable={!inBin}
+				class:sorted={inBin}
 				use:draggable={{
-					defaultPosition: initialTransform
+					disabled: inBin,
+					defaultPosition: initialTransform,
+					onDragStart: (data) => handleSelect(data, idx),
+					onDrag: handleMove,
+					onDragEnd: handleDrop
 				}}
 			>
 				<Shape {color} size={shapeSize} />
@@ -212,9 +194,7 @@
 		<div
 			id={ID_BUCKET1}
 			class="flex-1 border flex items-center justify-center"
-			bind:clientWidth={binWidth}
-			bind:clientHeight={binHeight}
-			class:hovering={hoverOver === ID_BUCKET1}
+			class:hovering={hoveredBin === 0}
 		>
 			{#if !sortByColor}
 				<Pentagon color="#a0a0a0" size={80} />
@@ -223,12 +203,9 @@
 			{/if}
 		</div>
 		<div
-			id="bucket2"
+			id={ID_BUCKET2}
 			class="flex-1 h-full border flex items-center justify-center"
-			on:dragenter={(e) => {
-				hoverOver = ID_BUCKET1;
-				e.preventDefault();
-			}}
+			class:hovering={hoveredBin === 1}
 		>
 			{#if !sortByColor}
 				<Hexagon color="#a0a0a0" size={80} />
@@ -237,15 +214,10 @@
 			{/if}
 		</div>
 		<div
-			id="bucket3"
+			id={ID_BUCKET3}
 			class="flex-1 border flex items-center justify-center"
-			on:dragenter={(e) => {
-				hoverOver = ID_BUCKET1;
-				e.preventDefault();
-			}}
-			on:dragover={(e) => {
-				e.preventDefault();
-			}}
+			class:hovering={hoveredBin === 2}
+			bind:this={thirdBin}
 		>
 			{#if !sortByColor}
 				<Septagon color="#a0a0a0" size={80} />
@@ -254,7 +226,13 @@
 			{/if}
 		</div>
 		<div id="submit" class="border flex items-stretch">
-			<button class="flex-1 p-9" on:click={handleSubmit}>Submit</button>
+			<button
+				disabled={!canSubmit}
+				class="flex-1 p-9 text-2xl"
+				class:bg-yellow-300={canSubmit}
+				class:bg-gray-400={!canSubmit}
+				on:click={handleSubmit}>Submit</button
+			>
 		</div>
 	</section>
 </main>
@@ -280,7 +258,8 @@
 
 	.shape {
 		display: inline-block;
-
+	}
+	.grabbable {
 		@include grab-cursor;
 
 		&:hovering {
@@ -290,5 +269,13 @@
 		&:active {
 			@include grabbing-cursor;
 		}
+	}
+
+	.hovering {
+		opacity: 0.7;
+	}
+
+	.sorted {
+		opacity: 0.8;
 	}
 </style>
