@@ -210,15 +210,18 @@
 
 <main class="w-screen h-screen flex m-0 p-0 overflow-hidden">
 	<section
-		class="flex flex-1 h-full"
+		class="flex flex-col flex-1 h-full"
 		bind:clientWidth={sandboxWidth}
 		bind:clientHeight={sandboxHeight}
 	>
-		<h2 class="flex-1 text-4xl font-bold text-center pt-8">Sort the shapes</h2>
+		<h2 class="text-4xl font-bold text-center pt-8">Sort the shapes</h2>
+		<h4 class="italic text-center pt-1">Click and drag shapes to the same-colored boxes</h4>
 		{#each pieces as { id, color, Shape, initialTransform, inBin }, idx (id)}
 			<div
 				id="shape-{idx}"
-				class="fixed shape z-{inBin ? '0' : '10'}"
+				class="fixed shape"
+				class:z-10={inBin}
+				class:z-20={!inBin}
 				class:grabbable={!inBin}
 				class:sorted={inBin}
 				class:grayscale-50={inBin}
@@ -234,7 +237,7 @@
 			</div>
 		{/each}
 	</section>
-	<section class="w-64 h-full flex flex-col">
+	<section class="w-64 h-full flex flex-col -z-10">
 		<div
 			id={ID_BUCKET1}
 			class="flex-1 border flex items-center justify-center"
@@ -248,7 +251,7 @@
 		</div>
 		<div
 			id={ID_BUCKET2}
-			class="flex-1 h-full border flex items-center justify-center"
+			class="flex-1 border flex items-center justify-center"
 			class:hovering={hoveredBin === 1}
 		>
 			{#if !sortByColor}

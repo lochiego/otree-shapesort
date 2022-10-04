@@ -11,10 +11,7 @@ const config = {
 
 	kit: {
 		adapter: adapter({
-			pages: 'build',
-			assets: 'build',
-			fallback: null,
-			precompress: false
+			pages: '../shapesort-dummy/shapesort/static/shapesort'
 		}),
 		trailingSlash: 'never'
 	}
