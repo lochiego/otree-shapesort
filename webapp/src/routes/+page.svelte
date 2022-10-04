@@ -165,6 +165,13 @@
 			pieces[selectedIdx].inBin = true;
 			// TODO: Update game statistics
 			pieces = pieces;
+			try{
+					// @ts-ignore otree-injected global function
+				liveSend("sorted")
+			}
+			catch (e) {
+				console.error('Unexpected error when sending "sorted"', e);
+			}
 		}
 		cleanup();
 
@@ -190,12 +197,18 @@
 		});
 
 		// TODO: Update game statistics
+		try {
+		// @ts-ignore otree-injected global
+		liveSend("completed");
+		} catch (e) {
+			console.error('Unexpected error when sending "sorted"', e);
+		}
 	}
 
 	$: sortByColor = sortBy === 'color';
 </script>
 
-<main class="w-full h-full flex m-0 p-0 overflow-hidden">
+<main class="w-screen h-screen flex m-0 p-0 overflow-hidden">
 	<section
 		class="flex flex-1 h-full"
 		bind:clientWidth={sandboxWidth}
