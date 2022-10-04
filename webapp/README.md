@@ -1,18 +1,8 @@
-# create-svelte
+# oTree Shape Sort
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+This is the SvelteKit project for the javascript portion of Shape Sort. It allows provides tie-ins to change the size, and sort scheme (color vs shape). This must be built in order to run from the oTree page.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+To package the web app in the otree app, you'll need to first build it, copy teh `build/_app` folder to the oTree app, and update the twig template's script tags accordingly based on what is output in `app.html`.
 
 ## Developing
 
@@ -35,4 +25,3 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
