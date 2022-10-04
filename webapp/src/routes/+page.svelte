@@ -4,6 +4,8 @@
 	 * ============ */
 	import Septagon from '../lib/septagon.svelte';
 	import type { DragEventData } from '@neodrag/svelte';
+	import { scale } from 'svelte/transition';
+	import { backInOut, backOut } from 'svelte/easing';
 	import { draggable } from '@neodrag/svelte';
 	import Hexagon from '../lib/hexagon.svelte';
 	import Pentagon from '../lib/pentagon.svelte';
@@ -163,6 +165,12 @@
 		// If we were hovering over the target then set the piece to be sorted
 		if (hoveredBin >= 0) {
 			pieces[selectedIdx].inBin = true;
+			const el = document.getElementById(`shape-${selectedIdx}`)!;
+
+			// el.style.left = event.offsetX + 'px';
+			// el.style.top = event.offsetY + 'px';
+			// el.style.transform = 'translate3d(0,0,0)';
+
 			// TODO: Update game statistics
 			pieces = pieces;
 			try{
@@ -206,6 +214,22 @@
 	}
 
 	$: sortByColor = sortBy === 'color';
+
+	/* ------------ 
+	 * Transitions
+	 * ------------ */
+
+	 function translatedBack(node: HTMLElement, params: any) {
+		return {
+			delay: params.delay || 0,
+			duration: params.duration || 400,
+			easing: params.easing || backOut,
+			css: (t: number, u: number) => {
+				const existingTransform = getComputedStyle(node).transform.replace('none', '');
+
+				return `transform: ${existingTransform} scale(${t * 1})`}
+		};
+	}
 </script>
 
 <main class="w-screen h-screen flex m-0 p-0 overflow-hidden">
@@ -225,6 +249,7 @@
 				class:grabbable={!inBin}
 				class:sorted={inBin}
 				class:grayscale-50={inBin}
+				transition:translatedBack="{{ duration: 750, easing: backInOut }}"
 				use:draggable={{
 					disabled: inBin,
 					defaultPosition: initialTransform,
