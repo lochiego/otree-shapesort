@@ -2,7 +2,7 @@
 	/* ============
 	 * Imports
 	 * ============ */
-	import Septagon from '$lib/septagon.svelte';
+	import Septagon from '../lib/septagon.svelte';
 	import type { DragEventData } from '@neodrag/svelte';
 	import { draggable } from '@neodrag/svelte';
 	import Hexagon from '../lib/hexagon.svelte';
@@ -137,8 +137,6 @@
 		const midX = event.domRect.x + halfSize;
 		const midY = event.domRect.y + halfSize;
 
-		console.log('event', event, midX, midY);
-
 		if (midX < thirdBin.offsetLeft) {
 			hoveredBin = -1;
 		} else {
@@ -199,7 +197,7 @@
 
 <main class="w-full h-full flex m-0 p-0 overflow-hidden">
 	<section
-		class="flex flex-1 h-full z-99999"
+		class="flex flex-1 h-full"
 		bind:clientWidth={sandboxWidth}
 		bind:clientHeight={sandboxHeight}
 	>
