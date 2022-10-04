@@ -16,6 +16,7 @@
 	export let shapeSize: number = 60;
 	export let sortBy: 'color' | 'shape' = 'color';
 	export const prerender = true;
+	let halfSize = shapeSize * 0.5;
 
 	/* ============
 	 * Constants
@@ -78,33 +79,33 @@
 
 	$: loaded = sandboxWidth !== undefined;
 
-	let pieces: (Piece & { initialTransform: Transform; targetSlot: number })[];
-	$: {
+	function createPieces(): (Piece & { initialTransform: Transform; targetSlot: number })[] {
 		const maxX = sandboxWidth - shapeSize;
 		const maxY = sandboxHeight - shapeSize;
 
-		pieces = !loaded
-			? []
-			: Array.from(Array(numShapes)).map((_, idx) => {
-					const bin = randomBin();
-					const [color, shape] =
-						sortBy === 'color'
-							? [colorForBin(bin), randomShape()]
-							: [randomColor(), shapeForBin(bin)];
+		return Array.from(Array(numShapes)).map((_, idx) => {
+			const bin = randomBin();
+			const [color, shape] =
+				sortBy === 'color' ? [colorForBin(bin), randomShape()] : [randomColor(), shapeForBin(bin)];
 
-					return {
-						id: idx,
-						Shape: shape,
-						color: color,
-						targetSlot: bin,
-						inBin: false,
-						initialTransform: {
-							x: Math.round(Math.random() * maxX),
-							y: Math.round(Math.random() * maxY),
-							angle: Math.round(Math.random() * 360)
-						}
-					};
-			  });
+			return {
+				id: idx,
+				Shape: shape,
+				color: color,
+				targetSlot: bin,
+				inBin: false,
+				initialTransform: {
+					x: Math.round(Math.random() * maxX),
+					y: Math.round(Math.random() * maxY),
+					angle: Math.round(Math.random() * 360)
+				}
+			};
+		});
+	}
+
+	let pieces: (Piece & { initialTransform: Transform; targetSlot: number })[];
+	$: {
+		pieces = !loaded ? [] : createPieces();
 	}
 
 	/* ------------
@@ -117,67 +118,99 @@
 
 	let thirdBin: HTMLElement;
 
+	/**
+	 * Prepares the game board to drop the selected target
+	 * @param event The drag event
+	 * @param itemIdx The index of the piece in the array to resolve the target bin
+	 */
 	function handleSelect(event: DragEventData, itemIdx: number) {
 		// Get the baseline offset
 		selectedIdx = itemIdx;
 		targetBin = pieces[selectedIdx].targetSlot;
 	}
 
+	/**
+	 * Determines whether at least half of the game piece is over the target bin
+	 * @param event The drag event which includes position information
+	 */
+	function handleMove(event: DragEventData) {
+		const midX = event.domRect.x + halfSize;
+		const midY = event.domRect.y + halfSize;
+
+		console.log('event', event, midX, midY);
+
+		if (midX < thirdBin.offsetLeft) {
+			hoveredBin = -1;
+		} else {
+			let overBin = Math.floor(midY / thirdBin.clientHeight);
+			hoveredBin = targetBin === overBin ? targetBin : -1;
+		}
+	}
+
+	/**
+	 * Resets metadata regarding the selected and target bins
+	 */
 	function cleanup() {
-		console.log('cleanup time');
 		// Remove any hover decorators from bins
 		selectedIdx = -1;
 		targetBin = -1;
 		hoveredBin = -1;
 	}
 
+	/**
+	 * 'Drops' the element into target bin, removing its interaction
+	 * @param event
+	 */
 	function handleDrop(event: DragEventData) {
-		console.log('dropped', event);
-
 		// If we were hovering over the target then set the piece to be sorted
 		if (hoveredBin >= 0) {
 			pieces[selectedIdx].inBin = true;
+			// TODO: Update game statistics
 			pieces = pieces;
 		}
-
 		cleanup();
-	}
 
-	function handleMove(event: DragEventData) {
-		const midX = event.domRect.x + event.domRect.width * 0.5;
-		const midY = event.domRect.y + event.domRect.height * 0.5;
-
-		if (midX < thirdBin.offsetLeft || midY > thirdBin.offsetTop + thirdBin.clientHeight) {
-			hoveredBin = -1;
-		} else {
-			let overBin = Math.floor(event.offsetY / thirdBin.clientHeight);
-			hoveredBin = targetBin === overBin ? targetBin : -1;
+		// Check if the game is over
+		if (pieces.length && pieces.every((p) => p.inBin)) {
+			handleFinished();
 		}
 	}
 
-	/* ------------
-	 * Cleanup
-	 * ------------ */
-	function handleSubmit() {
-		alert('Good job, pat on the back for you.');
+	/**
+	 * Resets the gameboard
+	 */
+	function handleFinished() {
+		// TODO: Animate Out
+
+		// TODO: Animate in new set
+
+		pieces = [];
+		requestAnimationFrame((tick) => {
+			setTimeout(() => {
+				pieces = createPieces();
+			}, 1000);
+		});
+
+		// TODO: Update game statistics
 	}
 
 	$: sortByColor = sortBy === 'color';
-	$: canSubmit = pieces.length && pieces.every((p) => p.inBin);
 </script>
 
 <main class="w-full h-full flex m-0 p-0 overflow-hidden">
 	<section
-		class="flex flex-1 h-full"
+		class="flex flex-1 h-full z-99999"
 		bind:clientWidth={sandboxWidth}
 		bind:clientHeight={sandboxHeight}
 	>
+		<h2 class="flex-1 text-4xl font-bold text-center pt-8">Sort the shapes</h2>
 		{#each pieces as { id, color, Shape, initialTransform, inBin }, idx (id)}
 			<div
 				id="shape-{idx}"
-				class="fixed z-10 shape"
+				class="fixed shape z-{inBin ? '0' : '10'}"
 				class:grabbable={!inBin}
 				class:sorted={inBin}
+				class:grayscale-50={inBin}
 				use:draggable={{
 					disabled: inBin,
 					defaultPosition: initialTransform,
@@ -225,15 +258,6 @@
 				<div class="w-full h-full bg-red-900 opacity-70" />
 			{/if}
 		</div>
-		<div id="submit" class="border flex items-stretch">
-			<button
-				disabled={!canSubmit}
-				class="flex-1 p-9 text-2xl"
-				class:bg-yellow-300={canSubmit}
-				class:bg-gray-400={!canSubmit}
-				on:click={handleSubmit}>Submit</button
-			>
-		</div>
 	</section>
 </main>
 
@@ -263,7 +287,7 @@
 		@include grab-cursor;
 
 		&:hovering {
-			opacity: 0.3;
+			opacity: 0.8;
 		}
 
 		&:active {
